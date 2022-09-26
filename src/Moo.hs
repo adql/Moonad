@@ -1,5 +1,5 @@
 module Moo
-  ( COWExpression
+  ( COWExpression(..)
   , moos
   )
   where
