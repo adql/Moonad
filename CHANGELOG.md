@@ -1,4 +1,4 @@
-# Changelog for `moonad`
+# Changelog for `Moonad`
 
 All notable changes to this project will be documented in this file.
 
