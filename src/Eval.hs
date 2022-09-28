@@ -15,7 +15,7 @@ import Moo
 initialMooState :: MooState
 initialMooState = MooState 0 [0] 0 Null
 
-evalMoo :: EvalCow
+evalMoo :: EvalCow (Either String Int)
 evalMoo = do
   evalPos <- gets mooEvalPos
   expr <- asks (!!evalPos)
@@ -39,7 +39,7 @@ runCow = go initialMooState
         (Right _, s') -> go s' cow
         result -> return result
 
-eval :: COWExpression -> EvalCow
+eval :: COWExpression -> EvalCow (Either String Int)
 
 -- 0 -- moo
 eval COWGoBack = do
@@ -138,10 +138,10 @@ eval COWStdReadInt = do
   let int = fromRight 0 $ parse intParser "" str
   modifyMemoryAtPos $ \_ -> int
 
-returnIncEvalPos :: EvalCow
+returnIncEvalPos :: EvalCow (Either String Int)
 returnIncEvalPos = (Right . (+ 1)) <$> gets mooEvalPos
 
-modifyMemoryAtPos :: (Int -> Int) -> EvalCow
+modifyMemoryAtPos :: (Int -> Int) -> EvalCow (Either String Int)
 modifyMemoryAtPos f = do
   pos <- gets mooMemPos
   mem <- gets mooMemory

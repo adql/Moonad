@@ -19,7 +19,4 @@ data MooState = MooState
   , mooRegister :: Register
   } deriving Show
 
-type EvalCow = ReaderT
-               [COWExpression]
-               (StateT MooState IO)
-               (Either String Int)
+type EvalCow a  = ReaderT [COWExpression] (StateT MooState IO) a
