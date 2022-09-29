@@ -30,14 +30,14 @@ evalMoo = do
         modify $ \s -> s { mooEvalPos = newEvalPos }
         return evalResult
 
-runCow :: [COWExpression] -> IO (Either String Int, MooState)
+runCow :: [COWExpression] -> IO MooState
 runCow = go initialMooState
   where
     go s cow = do
       iter <- runStateT (runReaderT evalMoo cow) s
       case iter of
         (Right _, s') -> go s' cow
-        result -> return result
+        (Left _, s') -> return s'
 
 eval :: COWExpression -> EvalCow (Either String Int)
 
