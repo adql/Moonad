@@ -17,6 +17,8 @@ data MooState = MooState
   , mooMemory :: [Int]
   , mooMemPos :: Int
   , mooRegister :: Register
+  , mooForward :: [(Int, Int)]
+  , mooBack :: [(Int, Int)]
   } deriving Show
 
 type EvalCow a  = ReaderT [COWExpression] (StateT MooState IO) a

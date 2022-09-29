@@ -6,14 +6,13 @@ where
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Either (fromRight)
-import Data.List (elemIndices, elemIndex)
 import Text.Parsec
 
 import Eval.Types
 import Moo
 
 initialMooState :: MooState
-initialMooState = MooState 0 [0] 0 Null
+initialMooState = MooState 0 [0] 0 Null [] []
 
 evalMoo :: EvalCow Bool
 evalMoo = do
@@ -44,11 +43,17 @@ eval :: COWExpression -> EvalCow (Maybe Int)
 -- 0 -- moo
 eval COWGoBack = do
   evalPos <- gets mooEvalPos
-  exprs <- take (evalPos - 1) <$> ask
-  let matches = elemIndices COWGoForward exprs
-  return $ Just $ case matches of
-    [] -> 0
-    _  -> last matches
+  back <- gets mooBack
+  let savedMatch = lookup evalPos back
+  case savedMatch of
+    Just _ -> return savedMatch
+    Nothing -> do
+      exprs <- take (evalPos - 1) <$> ask
+      case findLoop exprs True of
+        Nothing -> return Nothing
+        Just match -> do
+          modify $ \s -> s { mooBack = (evalPos,match) : back }
+          return $ Just match
 
 -- 1 -- mOo
 eval COWMemBack = do
@@ -102,9 +107,18 @@ eval COWGoForward = do
   case val of
     0 -> do
       evalPos <- gets mooEvalPos
-      exprs <- drop (evalPos + 1) <$> ask
-      let match = elemIndex COWGoBack exprs
-      return $ (+ (evalPos + 2)) <$> match
+      forward <- gets mooForward
+      let savedMatch = lookup evalPos forward
+      case savedMatch of
+        Just _ -> return savedMatch
+        Nothing -> do
+          exprs <- drop (evalPos + 2) <$> ask
+          case findLoop exprs False of
+            Nothing -> return Nothing
+            Just match' -> do
+              let match = match' + evalPos + 3
+              modify $ \s -> s { mooForward = (evalPos,match) : forward }
+              return $ Just match
     _ -> returnIncEvalPos
 
 -- 8 -- OOO
@@ -160,3 +174,22 @@ intParser = many digit <* many anyChar >>= \digits ->
   case digits of
     "" -> return 0
     _  -> return $ read digits
+
+findLoop :: [COWExpression] -> Bool -> Maybe Int
+findLoop exprs0 backwards =
+  go 0 0 $ if backwards then reverse exprs0 else exprs0
+  where
+    go :: Int -> Int -> [COWExpression] -> Maybe Int
+    go _ _ [] = Nothing
+    go nest pos (expr:exprs)
+      | expr == COWGoForward =
+        if backwards then matchOrNestOut else nestIn
+      | expr == COWGoBack =
+        if backwards then nestIn else matchOrNestOut
+      | otherwise = go nest (pos + 1) exprs
+      where
+        nestIn = go (nest + 1) (pos + 1) exprs
+        matchOrNestOut =
+          if nest > 0 then go (nest - 1) (pos + 1) exprs
+          else Just $ if backwards then (len - 1 - pos) else pos
+    len = length exprs0
