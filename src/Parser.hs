@@ -1,5 +1,5 @@
 module Parser
-  (cowParser)
+  (parseCow)
 where
 
 import Text.Parsec
@@ -19,3 +19,8 @@ cowParser = optional notMooParser *> mooParser `sepEndBy` notMooParser
   where
     notMooParser = manyTill anyChar (eof <|>
                                       (lookAhead mooParser *> return ()))
+
+parseCow :: String -> COW
+parseCow moo = case parse cowParser "" moo of
+  Left _ -> [] --should never happen by cowParser definition
+  Right cow -> cow
