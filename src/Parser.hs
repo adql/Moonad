@@ -14,7 +14,7 @@ mooParser = choice mooParsers >>= return . toMooExpression
     mooParsers = map (try . string) moos :: [Parsec String () String]
     toMooExpression = toEnum . fromJust . flip elemIndex moos
 
-cowParser :: Parsec String () [COWExpression]
+cowParser :: Parsec String () COW
 cowParser = optional notMooParser *> mooParser `sepEndBy` notMooParser
   where
     notMooParser = manyTill anyChar (eof <|>

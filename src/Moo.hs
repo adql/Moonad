@@ -1,8 +1,11 @@
 module Moo
-  ( COWExpression(..)
+  ( COW
+  , COWExpression(..)
   , moos
   )
   where
+
+type COW = [COWExpression]
 
 data COWExpression = COWGoBack
                    | COWMemBack

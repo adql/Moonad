@@ -12,7 +12,7 @@ import Eval.Types
 import Moo
 
 initialMooState :: MooState
-initialMooState = MooState 0 [0] 0 Null [] []
+initialMooState = MooState 0 [0] 0 RegNull [] []
 
 evalMoo :: EvalCow Bool
 evalMoo = do
@@ -29,7 +29,7 @@ evalMoo = do
         modify $ \s -> s { mooEvalPos = newEvalPos }
         return True
 
-runCow :: [COWExpression] -> IO MooState
+runCow :: COW -> IO MooState
 runCow = go initialMooState
   where
     go s cow = do
@@ -38,7 +38,7 @@ runCow = go initialMooState
         (True, s') -> go s' cow
         (False, s') -> return s'
 
-eval :: COWExpression -> EvalCow (Maybe Int)
+eval :: COWExpression -> EvalCow (Maybe MooEvalPos)
 
 -- 0 -- moo
 eval COWGoBack = do
@@ -128,13 +128,13 @@ eval COWMemReset = modifyMemoryAtPos $ \_ -> 0
 eval COWRegister = do
   register <- gets mooRegister
   case register of
-    Null -> do
+    RegNull -> do
       pos <- gets mooMemPos
       val <- (!!pos) <$> gets mooMemory
-      modify $ \s -> s { mooRegister = Val val }
+      modify $ \s -> s { mooRegister = RegVal val }
       returnIncEvalPos
-    Val val -> do
-      modify $ \s -> s { mooRegister = Null }
+    RegVal val -> do
+      modify $ \s -> s { mooRegister = RegNull }
       modifyMemoryAtPos $ \_ -> val
 
 -- 10 -- OOM
@@ -150,10 +150,10 @@ eval COWStdReadInt = do
   let int = fromRight 0 $ parse intParser "" str
   modifyMemoryAtPos $ \_ -> int
 
-returnIncEvalPos :: EvalCow (Maybe Int)
+returnIncEvalPos :: EvalCow (Maybe MooEvalPos)
 returnIncEvalPos = (Just . (+ 1)) <$> gets mooEvalPos
 
-modifyMemoryAtPos :: (Int -> Int) -> EvalCow (Maybe Int)
+modifyMemoryAtPos :: (Int -> Int) -> EvalCow (Maybe MooEvalPos)
 modifyMemoryAtPos f = do
   pos <- gets mooMemPos
   mem <- gets mooMemory
@@ -163,7 +163,7 @@ modifyMemoryAtPos f = do
       returnIncEvalPos
     Nothing -> return Nothing
 
-modifyMemoryAt :: Int -> (Int -> Int) -> [Int] -> Maybe [Int]
+modifyMemoryAt :: MooMemPos -> (Int -> Int) -> MooMemory -> Maybe MooMemory
 modifyMemoryAt pos f mem =
   case splitAt pos mem of
     (xs, x:xs') -> Just $ xs ++ (f x) : xs'
@@ -175,11 +175,11 @@ intParser = many digit <* many anyChar >>= \digits ->
     "" -> return 0
     _  -> return $ read digits
 
-findLoop :: [COWExpression] -> Bool -> Maybe Int
+findLoop :: COW -> Bool -> Maybe MooMemPos
 findLoop exprs0 backwards =
   go 0 0 $ if backwards then reverse exprs0 else exprs0
   where
-    go :: Int -> Int -> [COWExpression] -> Maybe Int
+    go :: Int -> MooMemPos -> COW -> Maybe MooMemPos
     go _ _ [] = Nothing
     go nest pos (expr:exprs)
       | expr == COWGoForward =
